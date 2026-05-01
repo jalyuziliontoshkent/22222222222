@@ -849,6 +849,28 @@ async def create_tables(db):
         await db.execute("ALTER TABLE materials ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL")
     except Exception:
         pass
+    # Add missing columns (migration for existing databases)
+    migrations = [
+        "ALTER TABLE materials ADD COLUMN IF NOT EXISTS stock_quantity FLOAT DEFAULT 0",
+        "ALTER TABLE materials ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'kv.m'",
+        "ALTER TABLE materials ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''",
+        "ALTER TABLE materials ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT ''",
+        "ALTER TABLE materials ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_limit FLOAT DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS debt FLOAT DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS specialty TEXT DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT DEFAULT ''",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_code TEXT DEFAULT ''",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_sqm FLOAT DEFAULT 0",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT ''",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_info TEXT",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_at TEXT DEFAULT ''",
+    ]
+    for m in migrations:
+        try:
+            await db.execute(m)
+        except Exception:
+            pass
     await db.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id SERIAL PRIMARY KEY,

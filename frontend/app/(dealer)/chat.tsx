@@ -126,7 +126,7 @@ export default function DealerChat() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.bg },
+  container: { flex: 1, backgroundColor: '#050508' },
   chatHeader: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)', gap: 14,

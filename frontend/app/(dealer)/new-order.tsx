@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Send, X, Check, Upload, Trash2, ChevronLeft, StickyNote, Package, FolderOpen } from 'lucide-react-native';
 import { api } from '../_layout';
 import { useTheme, useCurrency } from '../../src/utils/theme';
+import { calculateBillableArea, calculateItemPrice } from '../../src/utils/calculations';
 
 type OrderItem = {
   material_id: string; material_name: string; width: string; height: string;
@@ -37,20 +38,27 @@ export default function NewOrder() {
 
   const getItemsForMaterial = (matId: string) => items.filter(it => it.material_id === matId);
   const getTotalForMaterial = (matId: string) =>
-    getItemsForMaterial(matId).reduce((sum, it) => sum + (parseFloat(it.width) * parseFloat(it.height) * it.quantity * it.price_per_sqm), 0);
+    getItemsForMaterial(matId).reduce((sum, it) => {
+      const { price } = calculateItemPrice(parseFloat(it.width), parseFloat(it.height), it.price_per_sqm, it.quantity);
+      return sum + price;
+    }, 0);
 
-  const sqm = (parseFloat(width) || 0) * (parseFloat(height) || 0);
+  const rawSqm = (parseFloat(width) || 0) * (parseFloat(height) || 0);
+  const billableSqm = calculateBillableArea(rawSqm);
 
   const addItem = (mat: any) => {
-    if (sqm <= 0) return;
+    if (rawSqm <= 0) return;
     setItems([...items, { material_id: mat.id, material_name: mat.name, width, height, quantity: 1, price_per_sqm: mat.price_per_sqm }]);
     setWidth(''); setHeight('');
   };
 
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
 
-  const totalSqm = items.reduce((s, it) => s + (parseFloat(it.width) * parseFloat(it.height) * it.quantity), 0);
-  const totalPrice = items.reduce((s, it) => s + (parseFloat(it.width) * parseFloat(it.height) * it.quantity * it.price_per_sqm), 0);
+  const totalSqm = items.reduce((s, it) => s + calculateBillableArea(parseFloat(it.width) * parseFloat(it.height) * it.quantity), 0);
+  const totalPrice = items.reduce((s, it) => {
+    const { price } = calculateItemPrice(parseFloat(it.width), parseFloat(it.height), it.price_per_sqm, it.quantity);
+    return s + price;
+  }, 0);
 
   const submitOrder = async () => {
     if (items.length === 0) return;
@@ -131,8 +139,9 @@ export default function NewOrder() {
                 const isExpanded = expandedId === mat.id;
                 const matItems = getItemsForMaterial(mat.id);
                 const matTotal = getTotalForMaterial(mat.id);
-                const currentSqm = isExpanded ? sqm : 0;
-                const currentPrice = isExpanded ? sqm * mat.price_per_sqm : 0;
+                const currentSqm = isExpanded ? rawSqm : 0;
+                const currentBillable = isExpanded ? billableSqm : 0;
+                const currentPrice = isExpanded ? currentBillable * mat.price_per_sqm : 0;
 
                 return (
                   <View key={mat.id} style={[s.matCard, isExpanded && s.matCardExpanded, matItems.length > 0 && s.matCardWithItems]}>
@@ -173,12 +182,14 @@ export default function NewOrder() {
                     {isExpanded && (
                       <View style={s.expanded}>
                         {matItems.length > 0 && matItems.map((it, idx) => {
-                          const itSqm = parseFloat(it.width) * parseFloat(it.height);
+                          const itRaw = parseFloat(it.width) * parseFloat(it.height);
+                          const itBillable = calculateBillableArea(itRaw);
+                          const itPrice = itBillable * it.price_per_sqm;
                           return (
                             <View key={idx} style={s.existItem}>
                               <View style={{ flex: 1 }}>
                                 <Text style={s.existSize}>{it.width} × {it.height} m</Text>
-                                <Text style={s.existCalc}>{itSqm.toFixed(2)} kv.m = {formatPrice(Math.round(itSqm * it.price_per_sqm * 100) / 100)}</Text>
+                                <Text style={s.existCalc}>{itRaw.toFixed(2)} → {itBillable} kv.m = {formatPrice(Math.round(itPrice * 100) / 100)}</Text>
                               </View>
                               <TouchableOpacity style={s.existDel} onPress={() => removeItem(items.indexOf(it))}>
                                 <Trash2 size={14} color="#FF5252" />
@@ -196,12 +207,12 @@ export default function NewOrder() {
                             <Text style={s.inputLabel}>Bo'yi (m)</Text>
                             <TextInput style={s.dimInput} value={height} onChangeText={setHeight} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor="rgba(255,255,255,0.12)" />
                           </View>
-                          <TouchableOpacity style={[s.addBtn, sqm <= 0 && s.addBtnOff]} onPress={() => addItem(mat)} disabled={sqm <= 0}>
-                            <Plus size={18} color={sqm > 0 ? '#000' : 'rgba(255,255,255,0.15)'} />
+                          <TouchableOpacity style={[s.addBtn, rawSqm <= 0 && s.addBtnOff]} onPress={() => addItem(mat)} disabled={rawSqm <= 0}>
+                            <Plus size={18} color={rawSqm > 0 ? '#000' : 'rgba(255,255,255,0.15)'} />
                           </TouchableOpacity>
                         </View>
                         {currentSqm > 0 && (
-                          <View style={s.liveCalc}><Text style={s.liveCalcText}>{currentSqm.toFixed(2)} kv.m = {formatPrice(Math.round(currentPrice * 100) / 100)}</Text></View>
+                          <View style={s.liveCalc}><Text style={s.liveCalcText}>{currentSqm.toFixed(2)} → {currentBillable} kv.m = {formatPrice(Math.round(currentPrice * 100) / 100)}</Text></View>
                         )}
                       </View>
                     )}
@@ -245,23 +256,23 @@ export default function NewOrder() {
 }
 
 const s = StyleSheet.create({
-  c: { flex: 1, backgroundColor: c.bg },
+  c: { flex: 1, backgroundColor: '#050508' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   title: { fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
-  countBadge: { width: 36, height: 36, borderRadius: 18, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
+  countBadge: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#6C63FF', alignItems: 'center', justifyContent: 'center' },
   countText: { fontSize: 15, fontWeight: '800', color: '#fff' },
   successBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 20, marginBottom: 8, paddingVertical: 14, backgroundColor: 'rgba(0,200,83,0.08)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(0,200,83,0.15)' },
   successText: { color: '#00C853', fontSize: 15, fontWeight: '700' },
   // Categories grid
   catGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingTop: 16, gap: 10 },
-  catCard: { width: '47%', flexGrow: 1, backgroundColor: c.card, borderRadius: 20, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: c.cardBorder, gap: 8 },
-  catIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  catCard: { width: '47%', flexGrow: 1, backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 20, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', gap: 8 },
+  catIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(108,99,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   catCardName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   catCardCount: { fontSize: 12, color: 'rgba(255,255,255,0.35)' },
   // Back button
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 20, paddingVertical: 8 },
-  backText: { fontSize: 14, color: c.accent, fontWeight: '600' },
+  backText: { fontSize: 14, color: '#6C63FF', fontWeight: '600' },
   // Materials list
   listContent: { paddingHorizontal: 16 },
   matCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginBottom: 10, overflow: 'hidden' },
@@ -276,13 +287,13 @@ const s = StyleSheet.create({
   matPrice: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
   matPriceUnit: { fontSize: 11, color: 'rgba(255,255,255,0.3)' },
   matBadge: { backgroundColor: 'rgba(0,230,118,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  matBadgeText: { fontSize: 11, fontWeight: '700', color: c.success },
+  matBadgeText: { fontSize: 11, fontWeight: '700', color: '#00E676' },
   expandBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
   expandBtnActive: { backgroundColor: '#fff' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 12, gap: 6 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,230,118,0.08)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,230,118,0.12)' },
   chipText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
-  chipsTotal: { fontSize: 13, fontWeight: '700', color: c.success, marginLeft: 4 },
+  chipsTotal: { fontSize: 13, fontWeight: '700', color: '#00E676', marginLeft: 4 },
   expanded: { paddingHorizontal: 12, paddingBottom: 14 },
   existItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 10, marginBottom: 6 },
   existSize: { fontSize: 14, fontWeight: '600', color: '#fff' },
@@ -296,7 +307,7 @@ const s = StyleSheet.create({
   addBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   addBtnOff: { backgroundColor: 'rgba(255,255,255,0.06)' },
   liveCalc: { marginTop: 8, alignItems: 'center' },
-  liveCalcText: { fontSize: 13, color: c.accent, fontWeight: '600' },
+  liveCalcText: { fontSize: 13, color: '#6C63FF', fontWeight: '600' },
   // Bottom
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#0a0a0f', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingBottom: Platform.OS === 'ios' ? 28 : 16 },
   notesWrap: { paddingHorizontal: 16, paddingTop: 12 },

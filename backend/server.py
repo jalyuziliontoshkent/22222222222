@@ -66,10 +66,15 @@ cache = MemoryCache()
 # ─── DB Pool ───
 pool: asyncpg.Pool = None
 
+import ssl as _ssl
+
 async def get_pool() -> asyncpg.Pool:
     global pool
     if pool is None:
-        pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+        ssl_ctx = _ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = _ssl.CERT_NONE
+        pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl=ssl_ctx)
     return pool
 
 # ─── Helpers ───
@@ -158,6 +163,23 @@ async def get_exchange_rate():
     fallback = {"rate": 12800.0, "currency": "UZS", "date": "", "source": "fallback"}
     cache.set("exchange_rate", fallback, 300)
     return fallback
+
+# ─── BILLABLE AREA CALCULATION ───
+def calculate_billable_area(area: float) -> float:
+    """
+    Area rounding logic:
+    - From 0.01 to 0.50 m² → 0.5 m²
+    - From 0.51 to 1.00 m² → 1.0 m²
+    - Above 1.00 m² → keep original (no rounding)
+    - Invalid (0, negative, NaN) → 0
+    """
+    if not area or area <= 0:
+        return 0
+    if area <= 0.5:
+        return 0.5
+    if area <= 1.0:
+        return 1.0
+    return round(area, 2)
 
 # ─── AUTH ───
 @api_router.post("/auth/login")
@@ -449,10 +471,22 @@ async def create_order(data: OrderCreate, user: dict = Depends(get_current_user)
     db = await get_pool()
     items = []; total_price = 0; total_sqm = 0
     for it in data.items:
-        sqm = it.width * it.height * it.quantity
-        price = sqm * it.price_per_sqm
-        total_sqm += sqm; total_price += price
-        items.append({"material_id": it.material_id, "material_name": it.material_name, "width": it.width, "height": it.height, "quantity": it.quantity, "sqm": round(sqm, 2), "price_per_sqm": it.price_per_sqm, "price": round(price, 2), "notes": it.notes, "assigned_worker_id": "", "assigned_worker_name": "", "worker_status": "pending"})
+        # Validate inputs
+        if it.width <= 0 or it.height <= 0:
+            raise HTTPException(400, f"Noto'g'ri o'lcham: {it.width}x{it.height}")
+        raw_area = it.width * it.height * it.quantity
+        billable_area = calculate_billable_area(raw_area)
+        if billable_area <= 0:
+            raise HTTPException(400, f"Noto'g'ri maydon: {raw_area}")
+        price = billable_area * it.price_per_sqm
+        total_sqm += billable_area; total_price += price
+        items.append({
+            "material_id": it.material_id, "material_name": it.material_name,
+            "width": it.width, "height": it.height, "quantity": it.quantity,
+            "raw_area": round(raw_area, 4), "sqm": round(billable_area, 2),
+            "price_per_sqm": it.price_per_sqm, "price": round(price, 2),
+            "notes": it.notes, "assigned_worker_id": "", "assigned_worker_name": "", "worker_status": "pending"
+        })
     order_code = generate_order_code()
     now = datetime.now(timezone.utc).isoformat()
     row = await db.fetchrow(
@@ -1006,57 +1040,108 @@ async def export_orders_excel(admin: dict = Depends(require_admin)):
     wb = Workbook()
     ws = wb.active
     ws.title = "Buyurtmalar"
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
     # Styling
     header_font = Font(name='Arial', bold=True, color='FFFFFF', size=11)
     header_fill = PatternFill(start_color='6C63FF', end_color='6C63FF', fill_type='solid')
+    total_font = Font(name='Arial', bold=True, size=11)
+    total_fill = PatternFill(start_color='E8E8E8', end_color='E8E8E8', fill_type='solid')
     border = Border(
-        left=Side(style='thin', color='DDDDDD'),
-        right=Side(style='thin', color='DDDDDD'),
-        top=Side(style='thin', color='DDDDDD'),
-        bottom=Side(style='thin', color='DDDDDD'),
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        top=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC'),
     )
 
-    headers = ['#', 'Buyurtma kodi', 'Diler', 'Mahsulotlar', 'Jami kv.m', 'Jami narx ($)', 'Status', 'Sana']
+    # Headers
+    headers = ['#', 'Buyurtma ID', 'Diler', 'Mahsulot', 'Eni (m)', 'Bo\'yi (m)', 'Soni', 'Haqiqiy m²', 'Hisob m²', 'Narx/m²', 'Jami narx ($)', 'Status', 'Sana']
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=h)
         cell.font = header_font
         cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center')
+        cell.alignment = Alignment(horizontal='center', vertical='center')
         cell.border = border
 
-    for idx, order in enumerate(orders, 1):
-        items = json.loads(order["items"]) if isinstance(order["items"], str) else order["items"]
-        item_names = ", ".join([f'{it["material_name"]} ({it.get("width", 0)}x{it.get("height", 0)}m)' for it in items])
-        status_map = {"kutilmoqda": "Kutilmoqda", "tasdiqlangan": "Tasdiqlangan", "tayyorlanmoqda": "Tayyorlanmoqda", "tayyor": "Tayyor", "yetkazilmoqda": "Yetkazilmoqda", "yetkazildi": "Yetkazildi", "rad_etilgan": "Rad etilgan"}
+    status_map = {"kutilmoqda": "Kutilmoqda", "tasdiqlangan": "Tasdiqlangan", "tayyorlanmoqda": "Tayyorlanmoqda", "tayyor": "Tayyor", "yetkazilmoqda": "Yetkazilmoqda", "yetkazildi": "Yetkazildi", "rad_etilgan": "Rad etilgan"}
 
-        row = [idx, order["order_code"], order["dealer_name"], item_names, round(order["total_sqm"], 2), round(order["total_price"], 2), status_map.get(order["status"], order["status"]), order["created_at"][:16].replace("T", " ")]
-        for col, val in enumerate(row, 1):
-            cell = ws.cell(row=idx+1, column=col, value=val)
-            cell.border = border
-            if col in [5, 6]:
-                cell.alignment = Alignment(horizontal='right')
-                cell.number_format = '#,##0.00'
+    row_num = 2
+    grand_total = 0
+    item_counter = 0
+    for order in orders:
+        items = json.loads(order["items"]) if isinstance(order["items"], str) else order["items"]
+        date_str = order["created_at"][:16].replace("T", " ") if order["created_at"] else ""
+        status = status_map.get(order["status"], order["status"])
+
+        for item in items:
+            item_counter += 1
+            raw_area = item.get("raw_area", item.get("sqm", 0))
+            billable_area = item.get("sqm", 0)
+            price = item.get("price", 0)
+            grand_total += price
+
+            row_data = [
+                item_counter,
+                order["order_code"],
+                order["dealer_name"],
+                item.get("material_name", ""),
+                item.get("width", 0),
+                item.get("height", 0),
+                item.get("quantity", 1),
+                round(raw_area, 4),
+                round(billable_area, 2),
+                item.get("price_per_sqm", 0),
+                round(price, 2),
+                status,
+                date_str,
+            ]
+            for col, val in enumerate(row_data, 1):
+                cell = ws.cell(row=row_num, column=col, value=val)
+                cell.border = border
+                if col in [5, 6, 8, 9, 10, 11]:
+                    cell.alignment = Alignment(horizontal='right')
+                    cell.number_format = '#,##0.00'
+                elif col == 7:
+                    cell.alignment = Alignment(horizontal='center')
+            row_num += 1
+
+    # Total summary row
+    total_row = row_num
+    ws.cell(row=total_row, column=1, value="").border = border
+    ws.cell(row=total_row, column=2, value="").border = border
+    ws.cell(row=total_row, column=3, value="").border = border
+    total_label = ws.cell(row=total_row, column=4, value="JAMI:")
+    total_label.font = total_font
+    total_label.fill = total_fill
+    total_label.border = border
+    for col in [5, 6, 7, 8, 9, 10]:
+        c = ws.cell(row=total_row, column=col, value="")
+        c.fill = total_fill
+        c.border = border
+    total_cell = ws.cell(row=total_row, column=11, value=round(grand_total, 2))
+    total_cell.font = total_font
+    total_cell.fill = total_fill
+    total_cell.number_format = '#,##0.00'
+    total_cell.alignment = Alignment(horizontal='right')
+    total_cell.border = border
+    ws.cell(row=total_row, column=12, value="").fill = total_fill
+    ws.cell(row=total_row, column=12).border = border
+    ws.cell(row=total_row, column=13, value=today).fill = total_fill
+    ws.cell(row=total_row, column=13).border = border
 
     # Column widths
-    ws.column_dimensions['A'].width = 5
-    ws.column_dimensions['B'].width = 15
-    ws.column_dimensions['C'].width = 18
-    ws.column_dimensions['D'].width = 50
-    ws.column_dimensions['E'].width = 12
-    ws.column_dimensions['F'].width = 14
-    ws.column_dimensions['G'].width = 16
-    ws.column_dimensions['H'].width = 18
+    widths = {'A': 5, 'B': 14, 'C': 18, 'D': 25, 'E': 8, 'F': 8, 'G': 6, 'H': 11, 'I': 10, 'J': 10, 'K': 12, 'L': 16, 'M': 18}
+    for col, w in widths.items():
+        ws.column_dimensions[col].width = w
 
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
-    today = datetime.now(timezone.utc).strftime('%Y%m%d')
 
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=buyurtmalar_{today}.xlsx"}
+        headers={"Content-Disposition": f"attachment; filename=orders_{today}.xlsx"}
     )
 
 # ─── DEALER PAYMENTS (To'lovlar) ───
@@ -1115,12 +1200,26 @@ async def keep_alive_task():
 @app.on_event("startup")
 async def startup():
     global pool
-    pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
-    async with pool.acquire() as conn:
-        await create_tables(conn)
-        await seed_admin(conn)
-    asyncio.create_task(keep_alive_task())
-    logger.info("Server ishga tushdi! (PostgreSQL + Keep-Alive)")
+    # Try multiple times to connect (DB might be waking up)
+    for attempt in range(3):
+        try:
+            ssl_ctx = _ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = _ssl.CERT_NONE
+            pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl=ssl_ctx)
+            async with pool.acquire() as conn:
+                await create_tables(conn)
+                await seed_admin(conn)
+            asyncio.create_task(keep_alive_task())
+            logger.info("Server ishga tushdi! (PostgreSQL + Keep-Alive)")
+            return
+        except Exception as e:
+            logger.warning(f"DB ulanish urinishi {attempt+1}/3: {e}")
+            if attempt < 2:
+                await asyncio.sleep(5)
+    # If all attempts fail, start without DB (will retry on first request)
+    logger.error("DB ga ulanib bo'lmadi. Server DB siz ishga tushadi.")
+    pool = None
 
 @app.on_event("shutdown")
 async def shutdown():

@@ -29,6 +29,11 @@ export const api = async (path: string, options: any = {}) => {
   const headers: any = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${BACKEND_URL}/api${path}`, { ...options, headers });
+  if (res.status === 401) {
+    // Token expired or invalid - auto logout
+    await AsyncStorage.multiRemove(['token', 'user']);
+    throw new Error('Sessiya tugadi. Qayta kiring.');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Xatolik yuz berdi' }));
     throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));

@@ -50,16 +50,33 @@ export default function RootLayout() {
     try {
       // Load theme & currency settings
       await useAppStore.getState().loadSettings();
-      // Fetch exchange rate
+      // Fetch exchange rate (no auth needed)
       try {
-        const rateData = await api('/exchange-rate');
+        const rateData = await fetch(`${BACKEND_URL}/api/exchange-rate`).then(r => r.json());
         if (rateData?.rate) useAppStore.getState().setExchangeRate(rateData.rate);
       } catch {}
       const token = await AsyncStorage.getItem('token');
       const userStr = await AsyncStorage.getItem('user');
       if (token && userStr) {
-        const user = JSON.parse(userStr);
-        setAuth({ user, token, loading: false });
+        // Verify token is still valid
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setAuth({ user: data.user, token, loading: false });
+            await AsyncStorage.setItem('user', JSON.stringify(data.user));
+          } else {
+            // Token invalid - clear and go to login
+            await AsyncStorage.multiRemove(['token', 'user']);
+            setAuth({ user: null, token: null, loading: false });
+          }
+        } catch {
+          // Network error - use cached user
+          const user = JSON.parse(userStr);
+          setAuth({ user, token, loading: false });
+        }
       } else {
         setAuth({ user: null, token: null, loading: false });
       }

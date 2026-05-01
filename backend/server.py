@@ -74,7 +74,14 @@ async def get_pool() -> asyncpg.Pool:
         ssl_ctx = _ssl.create_default_context()
         ssl_ctx.check_hostname = False
         ssl_ctx.verify_mode = _ssl.CERT_NONE
-        pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl=ssl_ctx)
+        pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=2,
+            max_size=10,
+            ssl=ssl_ctx,
+            statement_cache_size=0,  # PgBouncer (Supabase pooler) uchun majburiy
+            command_timeout=60
+        )
     return pool
 
 # ─── Helpers ───
@@ -1206,12 +1213,19 @@ async def startup():
             ssl_ctx = _ssl.create_default_context()
             ssl_ctx.check_hostname = False
             ssl_ctx.verify_mode = _ssl.CERT_NONE
-            pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl=ssl_ctx)
+            pool = await asyncpg.create_pool(
+                DATABASE_URL,
+                min_size=2,
+                max_size=10,
+                ssl=ssl_ctx,
+                statement_cache_size=0,  # PgBouncer (Supabase pooler) uchun majburiy
+                command_timeout=60
+            )
             async with pool.acquire() as conn:
                 await create_tables(conn)
                 await seed_admin(conn)
             asyncio.create_task(keep_alive_task())
-            logger.info("Server ishga tushdi! (PostgreSQL + Keep-Alive)")
+            logger.info("Server ishga tushdi! (Supabase PostgreSQL + Keep-Alive)")
             return
         except Exception as e:
             logger.warning(f"DB ulanish urinishi {attempt+1}/3: {e}")

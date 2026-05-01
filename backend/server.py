@@ -76,11 +76,12 @@ async def get_pool() -> asyncpg.Pool:
         ssl_ctx.verify_mode = _ssl.CERT_NONE
         pool = await asyncpg.create_pool(
             DATABASE_URL,
-            min_size=2,
-            max_size=10,
+            min_size=5,
+            max_size=20,
             ssl=ssl_ctx,
             statement_cache_size=0,  # PgBouncer (Supabase pooler) uchun majburiy
-            command_timeout=60
+            command_timeout=30,
+            max_inactive_connection_lifetime=300
         )
     return pool
 
@@ -878,6 +879,23 @@ async def create_tables(db):
             await db.execute(m)
         except Exception:
             pass
+    # Performance indexes for fast queries
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+        "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
+        "CREATE INDEX IF NOT EXISTS idx_orders_dealer_id ON orders(dealer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
+        "CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_materials_category_id ON materials(category_id)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON messages(sender_id, receiver_id)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_payments_dealer_id ON payments(dealer_id)",
+    ]
+    for idx in indexes:
+        try:
+            await db.execute(idx)
+        except Exception:
+            pass
     await db.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id SERIAL PRIMARY KEY,
@@ -1244,11 +1262,12 @@ async def startup():
             ssl_ctx.verify_mode = _ssl.CERT_NONE
             pool = await asyncpg.create_pool(
                 DATABASE_URL,
-                min_size=2,
-                max_size=10,
+                min_size=5,
+                max_size=20,
                 ssl=ssl_ctx,
                 statement_cache_size=0,  # PgBouncer (Supabase pooler) uchun majburiy
-                command_timeout=60
+                command_timeout=30,
+                max_inactive_connection_lifetime=300
             )
             async with pool.acquire() as conn:
                 await create_tables(conn)

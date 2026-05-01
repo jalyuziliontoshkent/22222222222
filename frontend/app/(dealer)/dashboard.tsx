@@ -21,9 +21,12 @@ export default function DealerDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [ordersData, userData] = await Promise.all([api('/orders'), AsyncStorage.getItem('user')]);
+      const [ordersData, meData] = await Promise.all([api('/orders'), api('/auth/me')]);
       setOrders(ordersData);
-      if (userData) setUser(JSON.parse(userData));
+      if (meData?.user) {
+        setUser(meData.user);
+        await AsyncStorage.setItem('user', JSON.stringify(meData.user));
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);

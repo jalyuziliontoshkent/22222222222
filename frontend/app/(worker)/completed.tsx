@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckCircle, Hash, Ruler, Package } from 'lucide-react-native';
 import { api } from '../_layout';
-import { useTheme } from '../../src/utils/theme';
+import { useTheme, useCurrency } from '../../src/utils/theme';
 
 export default function WorkerCompleted() {
   const c = useTheme();
@@ -65,10 +65,10 @@ const s = StyleSheet.create({
   countRow: { paddingHorizontal: 24, marginTop: 12 },
   countCard: { backgroundColor: 'rgba(0,230,118,0.12)', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: 'rgba(0,230,118,0.15)' },
   countVal: { fontSize: 32, fontWeight: '800', color: '#00E676' },
-  countLabel: { fontSize: 12, color: '#FFFFFF'Sec, fontWeight: '600', marginTop: 2 },
+  countLabel: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginTop: 2 },
   scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 15, color: '#FFFFFF'Ter },
+  emptyText: { fontSize: 15, color: 'rgba(255,255,255,0.4)' },
   card: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 18, marginBottom: 12 },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   codeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,230,118,0.12)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
@@ -77,5 +77,5 @@ const s = StyleSheet.create({
   doneText: { fontSize: 11, fontWeight: '700', color: '#00E676' },
   material: { fontSize: 17, fontWeight: '700', color: '#fff', marginBottom: 8 },
   sizeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  size: { fontSize: 14, color: '#FFFFFF'Sec },
+  size: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
 });

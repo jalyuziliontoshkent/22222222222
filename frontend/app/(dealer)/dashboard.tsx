@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LogOut, Clock, Zap, Truck, CreditCard, Hash } from 'lucide-react-native';
 import { api } from '../_layout';
-import { colors, formatPrice, statusColors, statusLabels } from '../../src/utils/theme';
+import { useTheme, useCurrency, statusColors, statusLabels } from '../../src/utils/theme';
 
 export default function DealerDashboard() {
   const c = useTheme();
@@ -126,7 +126,7 @@ export default function DealerDashboard() {
 const s = StyleSheet.create({
   c: { flex: 1, backgroundColor: '#050508' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 },
-  hi: { fontSize: 13, color: '#FFFFFF'Sec, fontWeight: '500' },
+  hi: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
   name: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   logoutBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.035)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   scroll: { paddingHorizontal: 24, paddingBottom: 100 },
@@ -143,8 +143,8 @@ const s = StyleSheet.create({
   statusCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 18, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', gap: 6 },
   statusIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   statusVal: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  statusLabel: { fontSize: 9, color: '#FFFFFF'Sec, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
-  section: { fontSize: 11, color: '#FFFFFF'Ter, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12, fontWeight: '700' },
+  statusLabel: { fontSize: 9, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
+  section: { fontSize: 11, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12, fontWeight: '700' },
   orderCard: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 16, marginBottom: 10 },
   orderHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   codeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(108,99,255,0.15)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
@@ -155,8 +155,8 @@ const s = StyleSheet.create({
   itemsPreview: { marginTop: 12 },
   itemThumb: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   itemThumbName: { fontSize: 12, fontWeight: '600', color: '#fff' },
-  itemThumbSize: { fontSize: 10, color: '#FFFFFF'Ter, marginTop: 1 },
+  itemThumbSize: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
   orderFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)' },
-  orderSqm: { fontSize: 13, color: '#FFFFFF'Sec },
+  orderSqm: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   orderPrice: { fontSize: 17, fontWeight: '800', color: '#fff' },
 });

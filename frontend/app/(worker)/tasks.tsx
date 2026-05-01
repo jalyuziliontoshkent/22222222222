@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LogOut, Hash, CheckCircle, Ruler, Package } from 'lucide-react-native';
 import { api } from '../_layout';
-import { useTheme } from '../../src/utils/theme';
+import { useTheme, useCurrency } from '../../src/utils/theme';
 
 export default function WorkerTasks() {
   const c = useTheme();
@@ -101,25 +101,25 @@ export default function WorkerTasks() {
 const s = StyleSheet.create({
   c: { flex: 1, backgroundColor: '#050508' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 },
-  hi: { fontSize: 13, color: '#FFFFFF'Sec, fontWeight: '500' },
+  hi: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
   name: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   logoutBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.035)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   countRow: { paddingHorizontal: 24, marginBottom: 8 },
   countCard: { backgroundColor: 'rgba(108,99,255,0.15)', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: 'rgba(108,99,255,0.15)' },
   countVal: { fontSize: 32, fontWeight: '800', color: '#6C63FF' },
-  countLabel: { fontSize: 12, color: '#FFFFFF'Sec, fontWeight: '600', marginTop: 2 },
+  countLabel: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginTop: 2 },
   scroll: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 15, color: '#FFFFFF'Ter },
+  emptyText: { fontSize: 15, color: 'rgba(255,255,255,0.4)' },
   taskCard: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 18, marginBottom: 14 },
   taskHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   codeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(108,99,255,0.15)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   codeText: { fontSize: 12, fontWeight: '800', color: '#6C63FF', letterSpacing: 1, fontVariant: ['tabular-nums'] },
-  taskDealer: { fontSize: 12, color: '#FFFFFF'Sec },
+  taskDealer: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
   materialName: { fontSize: 18, fontWeight: '700', color: '#fff', marginBottom: 8 },
   sizeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sizeText: { fontSize: 14, color: '#FFFFFF'Sec },
-  notes: { fontSize: 13, color: '#FFFFFF'Ter, marginTop: 8, fontStyle: 'italic' },
+  sizeText: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
+  notes: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 8, fontStyle: 'italic' },
   completeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, backgroundColor: '#00E676', borderRadius: 26, marginTop: 16 },
   completeBtnText: { fontSize: 15, fontWeight: '700', color: '#000' },
 });

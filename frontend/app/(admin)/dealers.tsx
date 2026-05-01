@@ -12,7 +12,7 @@ import { useTheme, useCurrency } from '../../src/utils/theme';
 
 export default function DealersScreen() {
   const c = useTheme();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, exchangeRate } = useCurrency();
   const [dealers, setDealers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,6 +23,7 @@ export default function DealersScreen() {
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'UZS'>('USD');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', credit_limit: '' });
   const [formLoading, setFormLoading] = useState(false);
@@ -60,13 +61,15 @@ export default function DealersScreen() {
   };
 
   const submitPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (!amount || amount <= 0) { Alert.alert('Xatolik', 'Summa kiriting'); return; }
+    const rawAmount = parseFloat(paymentAmount);
+    if (!rawAmount || rawAmount <= 0) { Alert.alert('Xatolik', 'Summa kiriting'); return; }
+    // Convert UZS to USD if needed
+    const amountUSD = paymentCurrency === 'UZS' ? rawAmount / exchangeRate : rawAmount;
     setPaymentLoading(true);
     try {
-      await api(`/dealers/${selectedDealer.id}/payment`, { method: 'POST', body: JSON.stringify({ amount, note: paymentNote }) });
-      Alert.alert('Muvaffaqiyatli', `${formatPrice(amount)} to'lov qabul qilindi!`);
-      setShowPayment(false); fetchDealers();
+      await api(`/dealers/${selectedDealer.id}/payment`, { method: 'POST', body: JSON.stringify({ amount: Math.round(amountUSD * 100) / 100, note: paymentNote }) });
+      Alert.alert('Muvaffaqiyatli', `${paymentCurrency === 'UZS' ? rawAmount.toLocaleString() + " so'm" : '$' + rawAmount.toFixed(2)} to'lov qabul qilindi!`);
+      setShowPayment(false); setPaymentAmount(''); setPaymentNote(''); fetchDealers();
     } catch (e: any) { Alert.alert('Xatolik', e.message); }
     finally { setPaymentLoading(false); }
   };
@@ -191,16 +194,39 @@ export default function DealersScreen() {
                   <Text style={[s.payDebt, { color: c.danger }]}>Qarz: {formatPrice(selectedDealer.debt || 0)}</Text>
                 </View>
               )}
-              <Text style={[s.label, { color: c.textSec }]}>To'lov summasi ($)</Text>
+              {/* USD/UZS Toggle */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, gap: 4 }}>
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: paymentCurrency === 'USD' ? c.accent : c.inputBg }}
+                  onPress={() => setPaymentCurrency('USD')}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: paymentCurrency === 'USD' ? '#fff' : c.textSec }}>$ USD</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: paymentCurrency === 'UZS' ? c.accent : c.inputBg }}
+                  onPress={() => setPaymentCurrency('UZS')}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: paymentCurrency === 'UZS' ? '#fff' : c.textSec }}>UZS so'm</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[s.label, { color: c.textSec }]}>To'lov summasi ({paymentCurrency === 'USD' ? '$' : "so'm"})</Text>
               <TextInput
                 style={[s.input, s.bigInput, { backgroundColor: c.inputBg, borderColor: c.inputBorder, color: c.text }]}
                 value={paymentAmount}
                 onChangeText={setPaymentAmount}
-                placeholder="0.00"
+                placeholder={paymentCurrency === 'USD' ? '0.00' : '100000'}
                 placeholderTextColor={c.placeholder}
                 keyboardType="numeric"
               />
-              <Text style={[s.label, { color: c.textSec }]}>Izoh (ixtiyoriy)</Text>
+              {paymentAmount && parseFloat(paymentAmount) > 0 && (
+                <Text style={{ color: c.textSec, fontSize: 13, marginTop: 4, textAlign: 'center' }}>
+                  {paymentCurrency === 'USD'
+                    ? `≈ ${(parseFloat(paymentAmount) * exchangeRate).toLocaleString()} so'm`
+                    : `≈ $${(parseFloat(paymentAmount) / exchangeRate).toFixed(2)}`
+                  }
+                </Text>
+              )}
+              <Text style={[s.label, { color: c.textSec, marginTop: 12 }]}>Izoh (ixtiyoriy)</Text>
               <TextInput
                 style={[s.input, { backgroundColor: c.inputBg, borderColor: c.inputBorder, color: c.text }]}
                 value={paymentNote}

@@ -9,10 +9,11 @@ import { useRouter } from 'expo-router';
 import { LogOut, Clock, Zap, Truck, CreditCard, Hash } from 'lucide-react-native';
 import { api } from '../_layout';
 import { useTheme, useCurrency, statusColors, statusLabels } from '../../src/utils/theme';
+import { useAppStore } from '../../src/utils/store';
 
 export default function DealerDashboard() {
   const c = useTheme();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, toggleCurrency } = useCurrency();
   const [orders, setOrders] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -51,9 +52,14 @@ export default function DealerDashboard() {
           <Text style={s.hi}>Xush kelibsiz</Text>
           <Text style={s.name}>{user?.name || 'Diler'}</Text>
         </View>
-        <TouchableOpacity testID="dealer-logout-btn" onPress={handleLogout} style={s.logoutBtn}>
-          <LogOut size={20} color="rgba(255,255,255,0.4)" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity onPress={toggleCurrency} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(108,99,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#6C63FF' }}>{currency === 'USD' ? '$' : "so'm"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="dealer-logout-btn" onPress={handleLogout} style={s.logoutBtn}>
+            <LogOut size={20} color="rgba(255,255,255,0.4)" />
+          </TouchableOpacity>
+        </View>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} tintColor="#fff" />} contentContainerStyle={s.scroll}>
         {/* Credit Card */}

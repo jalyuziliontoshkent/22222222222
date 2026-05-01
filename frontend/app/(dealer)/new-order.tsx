@@ -25,6 +25,7 @@ export default function NewOrder() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
+  const [unit, setUnit] = useState<'m' | 'cm'>('m');
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -43,12 +44,14 @@ export default function NewOrder() {
       return sum + price;
     }, 0);
 
-  const rawSqm = (parseFloat(width) || 0) * (parseFloat(height) || 0);
+  const widthInM = unit === 'cm' ? (parseFloat(width) || 0) / 100 : (parseFloat(width) || 0);
+  const heightInM = unit === 'cm' ? (parseFloat(height) || 0) / 100 : (parseFloat(height) || 0);
+  const rawSqm = widthInM * heightInM;
   const billableSqm = calculateBillableArea(rawSqm);
 
   const addItem = (mat: any) => {
     if (rawSqm <= 0) return;
-    setItems([...items, { material_id: mat.id, material_name: mat.name, width, height, quantity: 1, price_per_sqm: mat.price_per_sqm }]);
+    setItems([...items, { material_id: mat.id, material_name: mat.name, width: widthInM.toString(), height: heightInM.toString(), quantity: 1, price_per_sqm: mat.price_per_sqm }]);
     setWidth(''); setHeight('');
   };
 
@@ -197,15 +200,27 @@ export default function NewOrder() {
                             </View>
                           );
                         })}
+                        {/* Unit toggle */}
+                        <View style={s.unitToggleRow}>
+                          <Text style={s.unitLabel}>O'lchov birligi:</Text>
+                          <View style={s.unitToggle}>
+                            <TouchableOpacity style={[s.unitBtn, unit === 'cm' && s.unitBtnActive]} onPress={() => setUnit('cm')}>
+                              <Text style={[s.unitBtnText, unit === 'cm' && s.unitBtnTextActive]}>cm</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[s.unitBtn, unit === 'm' && s.unitBtnActive]} onPress={() => setUnit('m')}>
+                              <Text style={[s.unitBtnText, unit === 'm' && s.unitBtnTextActive]}>m</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
                         <View style={s.inputRow}>
                           <View style={s.inputWrap}>
-                            <Text style={s.inputLabel}>En (m)</Text>
-                            <TextInput style={s.dimInput} value={width} onChangeText={setWidth} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor="rgba(255,255,255,0.12)" />
+                            <Text style={s.inputLabel}>En ({unit})</Text>
+                            <TextInput style={s.dimInput} value={width} onChangeText={setWidth} keyboardType="decimal-pad" placeholder={unit === 'cm' ? '150' : '1.50'} placeholderTextColor="rgba(255,255,255,0.12)" />
                           </View>
                           <Text style={s.x}>×</Text>
                           <View style={s.inputWrap}>
-                            <Text style={s.inputLabel}>Bo'yi (m)</Text>
-                            <TextInput style={s.dimInput} value={height} onChangeText={setHeight} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor="rgba(255,255,255,0.12)" />
+                            <Text style={s.inputLabel}>Bo'yi ({unit})</Text>
+                            <TextInput style={s.dimInput} value={height} onChangeText={setHeight} keyboardType="decimal-pad" placeholder={unit === 'cm' ? '200' : '2.00'} placeholderTextColor="rgba(255,255,255,0.12)" />
                           </View>
                           <TouchableOpacity style={[s.addBtn, rawSqm <= 0 && s.addBtnOff]} onPress={() => addItem(mat)} disabled={rawSqm <= 0}>
                             <Plus size={18} color={rawSqm > 0 ? '#000' : 'rgba(255,255,255,0.15)'} />
@@ -308,6 +323,14 @@ const s = StyleSheet.create({
   addBtnOff: { backgroundColor: 'rgba(255,255,255,0.06)' },
   liveCalc: { marginTop: 8, alignItems: 'center' },
   liveCalcText: { fontSize: 13, color: '#6C63FF', fontWeight: '600' },
+  // Unit toggle
+  unitToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  unitLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
+  unitToggle: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 3 },
+  unitBtn: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 10 },
+  unitBtnActive: { backgroundColor: '#6C63FF' },
+  unitBtnText: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.4)' },
+  unitBtnTextActive: { color: '#fff' },
   // Bottom
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#0a0a0f', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingBottom: Platform.OS === 'ios' ? 28 : 16 },
   notesWrap: { paddingHorizontal: 16, paddingTop: 12 },

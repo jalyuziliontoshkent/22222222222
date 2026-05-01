@@ -506,7 +506,14 @@ async def create_order(data: OrderCreate, user: dict = Depends(get_current_user)
     o["items"] = json.loads(o["items"]) if isinstance(o["items"], str) else o["items"]
     o["delivery_info"] = json.loads(o["delivery_info"]) if isinstance(o["delivery_info"], str) and o["delivery_info"] else o["delivery_info"]
     await db.execute("UPDATE users SET debt = debt + $1 WHERE id = $2", total_price, int(user["id"]))
-    cache.invalidate("orders", "stats", "reports")
+    # Auto-deduct stock from materials
+    for it in data.items:
+        try:
+            billable = calculate_billable_area(it.width * it.height * it.quantity)
+            await db.execute("UPDATE materials SET stock_quantity = GREATEST(0, stock_quantity - $1) WHERE id = $2", billable, int(it.material_id))
+        except Exception as e:
+            logger.warning(f"Stock ayirish xatolik (material {it.material_id}): {e}")
+    cache.invalidate("orders", "stats", "reports", "materials", "alerts")
     return o
 
 @api_router.get("/orders")

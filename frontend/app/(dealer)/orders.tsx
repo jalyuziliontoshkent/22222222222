@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Package, Truck, Phone, Hash } from 'lucide-react-native';
 import { api } from '../_layout';
-import { useTheme, useCurrency, statusLabels } from '../../src/utils/theme';
+import { useTheme, useCurrency, statusLabels, statusColors } from '../../src/utils/theme';
 
 export default function DealerOrders() {
   const c = useTheme();

@@ -70,17 +70,17 @@ export default function AdminChat() {
 
   if (selectedPartner) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.chatHeader}>
+      <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]} edges={['top']}>
+        <View style={[styles.chatHeader, { borderBottomColor: c.cardBorder }]}>
           <TouchableOpacity testID="chat-back-btn" onPress={() => { setSelectedPartner(null); clearInterval(intervalRef.current); fetchPartners(); }} style={styles.backBtn}>
-            <ArrowLeft size={22} color="#fff" />
+            <ArrowLeft size={22} color={c.text} />
           </TouchableOpacity>
-          <View style={styles.chatAvatar}>
-            <Text style={styles.chatAvatarText}>{selectedPartner.name?.charAt(0)?.toUpperCase()}</Text>
+          <View style={[styles.chatAvatar, { backgroundColor: c.accentSoft }]}>
+            <Text style={[styles.chatAvatarText, { color: c.accent }]}>{selectedPartner.name?.charAt(0)?.toUpperCase()}</Text>
           </View>
           <View style={styles.chatHeaderInfo}>
-            <Text style={styles.chatHeaderName}>{selectedPartner.name}</Text>
-            <Text style={styles.chatHeaderSub}>Diler</Text>
+            <Text style={[styles.chatHeaderName, { color: c.text }]}>{selectedPartner.name}</Text>
+            <Text style={[styles.chatHeaderSub, { color: c.textSec }]}>Diler</Text>
           </View>
         </View>
 
@@ -93,36 +93,36 @@ export default function AdminChat() {
           >
             {messages.length === 0 ? (
               <View style={styles.emptyChat}>
-                <Text style={styles.emptyChatText}>Hali xabarlar yo'q</Text>
-                <Text style={styles.emptyChatSub}>Birinchi xabarni yozing!</Text>
+                <Text style={[styles.emptyChatText, { color: c.textSec }]}>Hali xabarlar yo'q</Text>
+                <Text style={[styles.emptyChatSub, { color: c.textTer }]}>Birinchi xabarni yozing!</Text>
               </View>
             ) : messages.map(msg => (
               <View
                 key={msg.id}
-                style={[styles.bubble, msg.sender_id === userId ? styles.bubbleSent : styles.bubbleReceived]}
+                style={[styles.bubble, msg.sender_id === userId ? { alignSelf: 'flex-end', backgroundColor: c.accent, borderBottomRightRadius: 4 } : { alignSelf: 'flex-start', backgroundColor: c.card, borderWidth: 1, borderColor: c.cardBorder, borderBottomLeftRadius: 4 }]}
               >
-                <Text style={[styles.bubbleText, msg.sender_id === userId ? styles.bubbleTextSent : styles.bubbleTextReceived]}>
+                <Text style={[styles.bubbleText, { color: msg.sender_id === userId ? '#fff' : c.text }]}>
                   {msg.text}
                 </Text>
-                <Text style={[styles.bubbleTime, msg.sender_id === userId ? styles.bubbleTimeSent : styles.bubbleTimeReceived]}>
+                <Text style={[styles.bubbleTime, { color: msg.sender_id === userId ? 'rgba(255,255,255,0.6)' : c.textTer }]}>
                   {new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
             ))}
           </ScrollView>
 
-          <View style={styles.inputArea}>
+          <View style={[styles.inputArea, { backgroundColor: c.bg, borderTopColor: c.cardBorder }]}>
             <TextInput
               testID="chat-message-input"
-              style={styles.chatInput}
+              style={[styles.chatInput, { backgroundColor: c.inputBg, borderColor: c.inputBorder, color: c.text }]}
               placeholder="Xabar yozing..."
-              placeholderTextColor="rgba(255,255,255,0.25)"
+              placeholderTextColor={c.placeholder}
               value={text}
               onChangeText={setText}
               multiline
             />
-            <TouchableOpacity testID="chat-send-btn" style={styles.sendBtn} onPress={sendMessage}>
-              <Send size={20} color="#000" />
+            <TouchableOpacity testID="chat-send-btn" style={[styles.sendBtn, { backgroundColor: c.accent }]} onPress={sendMessage}>
+              <Send size={20} color="#fff" />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -131,37 +131,37 @@ export default function AdminChat() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Chat</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
+      <Text style={[styles.title, { color: c.text }]}>Chat</Text>
       <ScrollView contentContainerStyle={styles.partnerList}>
         {partners.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Dilerlar topilmadi</Text>
+            <Text style={[styles.emptyText, { color: c.textSec }]}>Dilerlar topilmadi</Text>
           </View>
         ) : partners.map(p => (
           <TouchableOpacity
             key={p.id} testID={`chat-partner-${p.id}`}
-            style={styles.partnerCard}
+            style={[styles.partnerCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
             onPress={() => setSelectedPartner(p)}
             activeOpacity={0.7}
           >
-            <View style={styles.partnerAvatar}>
-              <Text style={styles.partnerAvatarText}>{p.name?.charAt(0)?.toUpperCase()}</Text>
+            <View style={[styles.partnerAvatar, { backgroundColor: c.accentSoft }]}>
+              <Text style={[styles.partnerAvatarText, { color: c.accent }]}>{p.name?.charAt(0)?.toUpperCase()}</Text>
             </View>
             <View style={styles.partnerInfo}>
-              <Text style={styles.partnerName}>{p.name}</Text>
-              <Text style={styles.partnerLastMsg} numberOfLines={1}>
+              <Text style={[styles.partnerName, { color: c.text }]}>{p.name}</Text>
+              <Text style={[styles.partnerLastMsg, { color: c.textSec }]} numberOfLines={1}>
                 {p.last_message || 'Xabar yo\'q'}
               </Text>
             </View>
             <View style={styles.partnerMeta}>
               {p.last_message_time ? (
-                <Text style={styles.partnerTime}>
+                <Text style={[styles.partnerTime, { color: c.textTer }]}>
                   {new Date(p.last_message_time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               ) : null}
               {p.unread_count > 0 ? (
-                <View style={styles.unreadBadge}>
+                <View style={[styles.unreadBadge, { backgroundColor: c.accent }]}>
                   <Text style={styles.unreadText}>{p.unread_count}</Text>
                 </View>
               ) : null}
@@ -174,7 +174,7 @@ export default function AdminChat() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#050508' },
   title: { fontSize: 24, fontWeight: '300', color: '#fff', paddingHorizontal: 24, paddingTop: 16, letterSpacing: -0.5 },
   partnerList: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 100 },
   emptyState: { alignItems: 'center', paddingTop: 80 },

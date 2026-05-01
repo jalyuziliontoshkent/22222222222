@@ -65,18 +65,18 @@ export default function DealerChat() {
   };
 
   if (loading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#fff" style={{ flex: 1 }} /></SafeAreaView>;
+    return <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}><ActivityIndicator size="large" color={c.accent} style={{ flex: 1 }} /></SafeAreaView>;
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.chatHeader}>
-        <View style={styles.chatAvatar}>
-          <Text style={styles.chatAvatarText}>{adminName.charAt(0).toUpperCase()}</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]} edges={['top']}>
+      <View style={[styles.chatHeader, { borderBottomColor: c.cardBorder }]}>
+        <View style={[styles.chatAvatar, { backgroundColor: c.accentSoft }]}>
+          <Text style={[styles.chatAvatarText, { color: c.accent }]}>{adminName.charAt(0).toUpperCase()}</Text>
         </View>
         <View>
-          <Text style={styles.chatHeaderName}>{adminName}</Text>
-          <Text style={styles.chatHeaderSub}>Administrator</Text>
+          <Text style={[styles.chatHeaderName, { color: c.text }]}>{adminName}</Text>
+          <Text style={[styles.chatHeaderSub, { color: c.textSec }]}>Administrator</Text>
         </View>
       </View>
 
@@ -89,35 +89,35 @@ export default function DealerChat() {
         >
           {messages.length === 0 ? (
             <View style={styles.emptyChat}>
-              <Text style={styles.emptyChatText}>Admin bilan suhbatni boshlang</Text>
+              <Text style={[styles.emptyChatText, { color: c.textSec }]}>Admin bilan suhbatni boshlang</Text>
             </View>
           ) : messages.map(msg => (
             <View
               key={msg.id}
-              style={[styles.bubble, msg.sender_id === userId ? styles.bubbleSent : styles.bubbleReceived]}
+              style={[styles.bubble, msg.sender_id === userId ? { alignSelf: 'flex-end', backgroundColor: c.accent, borderBottomRightRadius: 4 } : { alignSelf: 'flex-start', backgroundColor: c.card, borderWidth: 1, borderColor: c.cardBorder, borderBottomLeftRadius: 4 }]}
             >
-              <Text style={[styles.bubbleText, msg.sender_id === userId ? styles.bubbleTextSent : styles.bubbleTextReceived]}>
+              <Text style={[styles.bubbleText, { color: msg.sender_id === userId ? '#fff' : c.text }]}>
                 {msg.text}
               </Text>
-              <Text style={[styles.bubbleTime, msg.sender_id === userId ? styles.bubbleTimeSent : styles.bubbleTimeReceived]}>
+              <Text style={[styles.bubbleTime, { color: msg.sender_id === userId ? 'rgba(255,255,255,0.6)' : c.textTer }]}>
                 {new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
           ))}
         </ScrollView>
 
-        <View style={styles.inputArea}>
+        <View style={[styles.inputArea, { backgroundColor: c.bg, borderTopColor: c.cardBorder }]}>
           <TextInput
             testID="dealer-chat-input"
-            style={styles.chatInput}
+            style={[styles.chatInput, { backgroundColor: c.inputBg, borderColor: c.inputBorder, color: c.text }]}
             placeholder="Xabar yozing..."
-            placeholderTextColor="rgba(255,255,255,0.25)"
+            placeholderTextColor={c.placeholder}
             value={text}
             onChangeText={setText}
             multiline
           />
-          <TouchableOpacity testID="dealer-chat-send-btn" style={styles.sendBtn} onPress={sendMessage}>
-            <Send size={20} color="#000" />
+          <TouchableOpacity testID="dealer-chat-send-btn" style={[styles.sendBtn, { backgroundColor: c.accent }]} onPress={sendMessage}>
+            <Send size={20} color="#fff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

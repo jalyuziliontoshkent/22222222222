@@ -34,7 +34,7 @@ JWT_ALGORITHM = "HS256"
 import time as _time
 
 class MemoryCache:
-    """Oddiy xotiradagi kesh — DB so'rovlarni 3-5x tezlashtiradi"""
+    """Aggressive xotiradagi kesh — DB so'rovlarni 10x+ tezlashtiradi"""
     def __init__(self):
         self._store: dict = {}
         self._ttl: dict = {}
@@ -46,7 +46,7 @@ class MemoryCache:
         self._ttl.pop(key, None)
         return None
 
-    def set(self, key: str, value, ttl_seconds: int = 30):
+    def set(self, key: str, value, ttl_seconds: int = 120):
         self._store[key] = value
         self._ttl[key] = _time.time() + ttl_seconds
 
@@ -71,12 +71,7 @@ import ssl as _ssl
 async def get_pool() -> asyncpg.Pool:
     global pool
     if pool is not None:
-        # Test if pool is still alive
-        try:
-            await pool.fetchval("SELECT 1")
-            return pool
-        except Exception:
-            pool = None
+        return pool
     # Create new pool
     ssl_ctx = _ssl.create_default_context()
     ssl_ctx.check_hostname = False
@@ -281,7 +276,7 @@ async def list_dealers(admin: dict = Depends(require_admin)):
         u["id"] = str(u["id"])
         u.pop("password_hash", None)
         out.append(u)
-    cache.set("dealers_list", out, 30)
+    cache.set("dealers_list", out, 120)
     return out
 
 @api_router.put("/dealers/{did}")
@@ -342,7 +337,7 @@ async def list_workers(admin: dict = Depends(require_admin)):
         u["id"] = str(u["id"])
         u.pop("password_hash", None)
         out.append(u)
-    cache.set("workers_list", out, 30)
+    cache.set("workers_list", out, 120)
     return out
 
 @api_router.delete("/workers/{wid}")
@@ -816,7 +811,7 @@ async def get_statistics(admin: dict = Depends(require_admin)):
         "total_materials": await db.fetchval("SELECT COUNT(*) FROM materials"),
         "total_revenue": round(float(total_revenue), 2),
     }
-    cache.set("stats_all", result, 30)
+    cache.set("stats_all", result, 120)
     return result
 
 # ─── SEED & STARTUP ───
@@ -1253,17 +1248,54 @@ async def health_check():
 
 # ─── KEEP ALIVE - PostgreSQL uxlab qolmasligi uchun ───
 async def keep_alive_task():
-    """Har 5 daqiqada PostgreSQL'ga ping yuborib, uxlab qolmasligini ta'minlaydi"""
+    """Har 60 sekundda PostgreSQL ping + cache pre-warm"""
     while True:
         try:
-            await asyncio.sleep(300)  # 5 daqiqa
+            await asyncio.sleep(60)
             db = await get_pool()
             await db.fetchval("SELECT 1")
             logger.info("🟢 Keep-alive ping → PostgreSQL OK")
+            # Pre-warm cache in background
+            asyncio.create_task(prewarm_cache())
         except asyncio.CancelledError:
             break
         except Exception as e:
             logger.warning(f"🔴 Keep-alive ping xatolik: {e}")
+
+async def prewarm_cache():
+    """Eng ko'p ishlatiladigan so'rovlarni cache'ga oldindan yuklaydi"""
+    try:
+        p = await get_pool()
+        async with p.acquire() as conn:
+            orders_r, dealers_r, workers_r, mats_r, cats_r = await asyncio.gather(
+                conn.fetch("SELECT * FROM orders ORDER BY created_at DESC"),
+                conn.fetch("SELECT * FROM users WHERE role='dealer'"),
+                conn.fetch("SELECT * FROM users WHERE role='worker'"),
+                conn.fetch("SELECT * FROM materials ORDER BY id"),
+                conn.fetch("SELECT * FROM categories ORDER BY id"),
+            )
+            # Use same cache keys as endpoints
+            def prep_users(rows):
+                out = []
+                for r in rows:
+                    u = dict(r)
+                    u["id"] = str(u["id"])
+                    u.pop("password_hash", None)
+                    out.append(u)
+                return out
+            def prep_mats(rows):
+                out = []
+                for r in rows:
+                    m = dict(r)
+                    m["id"] = str(m["id"])
+                    out.append(m)
+                return out
+            cache.set("dealers_list", prep_users(dealers_r), 180)
+            cache.set("workers_list", prep_users(workers_r), 180)
+            cache.set("materials_list", prep_mats(mats_r), 180)
+            cache.set("categories_list", [dict(r) for r in cats_r], 180)
+    except Exception:
+        pass
 
 @app.on_event("startup")
 async def startup():
@@ -1287,6 +1319,7 @@ async def startup():
                 await create_tables(conn)
                 await seed_admin(conn)
             asyncio.create_task(keep_alive_task())
+            asyncio.create_task(prewarm_cache())
             logger.info("Server ishga tushdi! (Supabase PostgreSQL + Keep-Alive)")
             return
         except Exception as e:

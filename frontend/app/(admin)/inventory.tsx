@@ -24,6 +24,7 @@ export default function AdminInventory() {
   const [editingCat, setEditingCat] = useState<any>(null);
   const [showMatModal, setShowMatModal] = useState(false);
   const [matForm, setMatForm] = useState({ name: '', price_per_sqm: '', stock_quantity: '', description: '' });
+  const [editingMat, setEditingMat] = useState<any>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -43,14 +44,25 @@ export default function AdminInventory() {
   const deleteCat = async (cat: any) => { Alert.alert("O'chirish", `"${cat.name}" kategoriyasini o'chirasizmi?`, [{ text: 'Bekor', style: 'cancel' }, { text: "O'chirish", style: 'destructive', onPress: async () => { try { await api(`/categories/${cat.id}`, { method: 'DELETE' }); setSelectedCat(null); fetchData(); } catch (e: any) { Alert.alert('Xatolik', e.message); } } }]); };
   const pickImage = async () => { const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') { Alert.alert('Ruxsat kerak'); return; } const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.7 }); if (!result.canceled && result.assets[0]) setImageUri(result.assets[0].uri); };
   const saveMat = async () => {
-    if (!matForm.name || !matForm.price_per_sqm || !matForm.stock_quantity || !selectedCat) return;
+    if (!matForm.name || !matForm.price_per_sqm || !matForm.stock_quantity) return;
     setUploading(true);
     try {
-      let image_url = '';
+      let image_url = editingMat?.image_url || '';
       if (imageUri) { const token = await AsyncStorage.getItem('token'); const formData = new FormData(); const filename = imageUri.split('/').pop() || 'photo.jpg'; const match = /\.(\w+)$/.exec(filename); const type = match ? `image/${match[1]}` : 'image/jpeg'; formData.append('file', { uri: imageUri, name: filename, type } as any); const res = await fetch(`${BACKEND_URL}/api/upload-image`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData }); if (res.ok) { const data = await res.json(); image_url = data.image_url; } }
-      await api('/materials', { method: 'POST', body: JSON.stringify({ name: matForm.name, category: selectedCat.name, category_id: parseInt(selectedCat.id), price_per_sqm: parseFloat(matForm.price_per_sqm), stock_quantity: parseFloat(matForm.stock_quantity), description: matForm.description, unit: 'kv.m', image_url }) });
-      setShowMatModal(false); setMatForm({ name: '', price_per_sqm: '', stock_quantity: '', description: '' }); setImageUri(null); fetchData();
-    } catch (e) { console.error(e); } finally { setUploading(false); }
+      const body = { name: matForm.name, category: selectedCat?.name || editingMat?.category || '', category_id: selectedCat ? parseInt(selectedCat.id) : editingMat?.category_id, price_per_sqm: parseFloat(matForm.price_per_sqm), stock_quantity: parseFloat(matForm.stock_quantity), description: matForm.description, unit: 'kv.m', image_url };
+      if (editingMat) {
+        await api(`/materials/${editingMat.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      } else {
+        await api('/materials', { method: 'POST', body: JSON.stringify(body) });
+      }
+      setShowMatModal(false); setMatForm({ name: '', price_per_sqm: '', stock_quantity: '', description: '' }); setImageUri(null); setEditingMat(null); fetchData();
+    } catch (e: any) { Alert.alert('Xatolik', e.message); } finally { setUploading(false); }
+  };
+  const editMat = (mat: any) => {
+    setEditingMat(mat);
+    setMatForm({ name: mat.name, price_per_sqm: String(mat.price_per_sqm), stock_quantity: String(mat.stock_quantity), description: mat.description || '' });
+    setImageUri(mat.image_url || null);
+    setShowMatModal(true);
   };
   const deleteMat = async (mat: any) => { Alert.alert("O'chirish", `"${mat.name}" ni o'chirasizmi?`, [{ text: 'Bekor', style: 'cancel' }, { text: "O'chirish", style: 'destructive', onPress: async () => { try { await api(`/materials/${mat.id}`, { method: 'DELETE' }); fetchData(); } catch (e) { console.error(e); } } }]); };
 
@@ -107,7 +119,10 @@ export default function AdminInventory() {
                   {mat.stock_quantity < 10 ? <View style={[s.lowBadge, { backgroundColor: c.dangerSoft }]}><Text style={{ fontSize: 11, fontWeight: '700', color: c.danger }}>⚠ {mat.stock_quantity}</Text></View> : <Text style={{ fontSize: 11, color: c.textTer }}>{mat.stock_quantity} {mat.unit}</Text>}
                 </View>
               </View>
-              <TouchableOpacity style={[s.delCircle, { backgroundColor: c.dangerSoft }]} onPress={() => deleteMat(mat)}><Trash2 size={14} color={c.danger} /></TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <TouchableOpacity style={[s.delCircle, { backgroundColor: c.accentSoft }]} onPress={() => editMat(mat)}><Edit3 size={14} color={c.accent} /></TouchableOpacity>
+                <TouchableOpacity style={[s.delCircle, { backgroundColor: c.dangerSoft }]} onPress={() => deleteMat(mat)}><Trash2 size={14} color={c.danger} /></TouchableOpacity>
+              </View>
             </View>
           </View>
         ))}
@@ -131,9 +146,9 @@ export default function AdminInventory() {
 
       {/* Material Modal */}
       <Modal visible={showMatModal} transparent animationType="slide"><View style={s.modalBg}><View style={[s.modal, { backgroundColor: c.modalBg, borderColor: c.cardBorder }]}>
-        <View style={[s.modalH, { borderBottomColor: c.cardBorder }]}><Text style={{ fontSize: 18, fontWeight: '700', color: c.text }}>Yangi mahsulot</Text><TouchableOpacity onPress={() => setShowMatModal(false)}><X size={22} color={c.textSec} /></TouchableOpacity></View>
+        <View style={[s.modalH, { borderBottomColor: c.cardBorder }]}><Text style={{ fontSize: 18, fontWeight: '700', color: c.text }}>{editingMat ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot'}</Text><TouchableOpacity onPress={() => { setShowMatModal(false); setEditingMat(null); }}><X size={22} color={c.textSec} /></TouchableOpacity></View>
         <ScrollView style={{ padding: 22 }} showsVerticalScrollIndicator={false}>
-          <View style={[s.catTag, { backgroundColor: c.accentSoft }]}><Text style={{ fontSize: 13, fontWeight: '700', color: c.accent }}>{selectedCat?.name}</Text></View>
+          {(selectedCat || editingMat) && <View style={[s.catTag, { backgroundColor: c.accentSoft }]}><Text style={{ fontSize: 13, fontWeight: '700', color: c.accent }}>{selectedCat?.name || editingMat?.category}</Text></View>}
           <Text style={[s.label, { color: c.textSec }]}>Rasm</Text>
           <TouchableOpacity style={[s.imgPicker, { borderColor: c.cardBorder }]} onPress={pickImage}>
             {imageUri ? <Image source={{ uri: imageUri }} style={s.imgPreview} /> : <View style={[s.imgPlaceholder, { backgroundColor: c.inputBg }]}><Upload size={24} color={c.textTer} /><Text style={{ fontSize: 13, color: c.textTer }}>Galereyadan tanlash</Text></View>}

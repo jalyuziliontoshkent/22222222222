@@ -70,19 +70,26 @@ import ssl as _ssl
 
 async def get_pool() -> asyncpg.Pool:
     global pool
-    if pool is None:
-        ssl_ctx = _ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = _ssl.CERT_NONE
-        pool = await asyncpg.create_pool(
-            DATABASE_URL,
-            min_size=5,
-            max_size=20,
-            ssl=ssl_ctx,
-            statement_cache_size=0,  # PgBouncer (Supabase pooler) uchun majburiy
-            command_timeout=30,
-            max_inactive_connection_lifetime=300
-        )
+    if pool is not None:
+        # Test if pool is still alive
+        try:
+            await pool.fetchval("SELECT 1")
+            return pool
+        except Exception:
+            pool = None
+    # Create new pool
+    ssl_ctx = _ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = _ssl.CERT_NONE
+    pool = await asyncpg.create_pool(
+        DATABASE_URL,
+        min_size=5,
+        max_size=20,
+        ssl=ssl_ctx,
+        statement_cache_size=0,
+        command_timeout=30,
+        max_inactive_connection_lifetime=300
+    )
     return pool
 
 # ─── Helpers ───

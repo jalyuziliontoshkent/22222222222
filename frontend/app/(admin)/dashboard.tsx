@@ -37,11 +37,15 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsData, reportsData, lowStockData, userStr] = await Promise.all([
-        api('/statistics'), api('/reports'), api('/alerts/low-stock'), AsyncStorage.getItem('user'),
+      // Load user name immediately from cache
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) { const u = JSON.parse(userStr); setUserName(u.name || 'Admin'); setUserEmail(u.email || ''); }
+      setLoading(false); // Show UI immediately!
+      // Fetch data in background
+      const [statsData, reportsData, lowStockData] = await Promise.all([
+        api('/statistics'), api('/reports'), api('/alerts/low-stock'),
       ]);
       setStats(statsData); setReports(reportsData); setLowStock(lowStockData || []);
-      if (userStr) { const u = JSON.parse(userStr); setUserName(u.name || 'Admin'); setUserEmail(u.email || ''); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);

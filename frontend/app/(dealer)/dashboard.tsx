@@ -22,6 +22,11 @@ export default function DealerDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
+      // Load user from cache immediately
+      const cachedUser = await AsyncStorage.getItem('user');
+      if (cachedUser) setUser(JSON.parse(cachedUser));
+      setLoading(false); // Show UI immediately!
+      // Fetch fresh data in background
       const [ordersData, meData] = await Promise.all([api('/orders'), api('/auth/me')]);
       setOrders(ordersData);
       if (meData?.user) {

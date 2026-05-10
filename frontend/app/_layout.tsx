@@ -65,37 +65,47 @@ export default function RootLayout() {
 
   const checkAuth = useCallback(async () => {
     try {
-      // Load theme & currency settings
+      // Load theme & currency settings (fast - from AsyncStorage)
       await useAppStore.getState().loadSettings();
-      // Fetch exchange rate (no auth needed)
-      try {
-        const rateData = await fetch(`${BACKEND_URL}/api/exchange-rate`).then(r => r.json());
-        if (rateData?.rate) useAppStore.getState().setExchangeRate(rateData.rate);
-      } catch {}
+      
       const token = await AsyncStorage.getItem('token');
       const userStr = await AsyncStorage.getItem('user');
+      
       if (token && userStr) {
-        // Verify token is still valid
-        try {
-          const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setAuth({ user: data.user, token, loading: false });
-            await AsyncStorage.setItem('user', JSON.stringify(data.user));
-          } else {
-            // Token invalid - clear and go to login
-            await AsyncStorage.multiRemove(['token', 'user']);
-            setAuth({ user: null, token: null, loading: false });
-          }
-        } catch {
-          // Network error - use cached user
-          const user = JSON.parse(userStr);
-          setAuth({ user, token, loading: false });
-        }
+        // INSTANT: Trust cached user data, show app immediately
+        const user = JSON.parse(userStr);
+        setAuth({ user, token, loading: false });
+        
+        // BACKGROUND: Verify token + fetch exchange rate (don't block UI)
+        setTimeout(async () => {
+          try {
+            const [meRes, rateRes] = await Promise.all([
+              fetch(`${BACKEND_URL}/api/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+              fetch(`${BACKEND_URL}/api/exchange-rate`),
+            ]);
+            if (meRes.ok) {
+              const meData = await meRes.json();
+              setAuth(prev => ({ ...prev, user: meData.user }));
+              await AsyncStorage.setItem('user', JSON.stringify(meData.user));
+            } else {
+              // Token invalid - logout
+              await AsyncStorage.multiRemove(['token', 'user']);
+              setAuth({ user: null, token: null, loading: false });
+            }
+            if (rateRes.ok) {
+              const rateData = await rateRes.json();
+              if (rateData?.rate) useAppStore.getState().setExchangeRate(rateData.rate);
+            }
+          } catch {}
+        }, 100);
       } else {
+        // No cached user - show login immediately
         setAuth({ user: null, token: null, loading: false });
+        // Fetch exchange rate in background
+        try {
+          const rateData = await fetch(`${BACKEND_URL}/api/exchange-rate`).then(r => r.json());
+          if (rateData?.rate) useAppStore.getState().setExchangeRate(rateData.rate);
+        } catch {}
       }
     } catch {
       setAuth({ user: null, token: null, loading: false });

@@ -1375,30 +1375,31 @@ async def prewarm_cache():
 @app.on_event("startup")
 async def startup():
     global pool
+    # Start DB connection in background - don't block server startup for health checks
+    asyncio.create_task(connect_db_background())
+    logger.info("Server ishga tushdi! DB ulanish backgroundda...")
+
+async def connect_db_background():
+    """Connect to DB in background so health check passes immediately"""
+    global pool
     ssl_ctx = _ssl.create_default_context()
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = _ssl.CERT_NONE
     
-    # Try each DB URL with multiple attempts
     for db_url in DB_URLS:
         for attempt in range(5):
             try:
                 logger.info(f"DB ulanish urinishi {attempt+1}/5: {db_url[:60]}...")
                 pool = await asyncpg.create_pool(
-                    db_url,
-                    min_size=2,
-                    max_size=15,
-                    ssl=ssl_ctx,
-                    statement_cache_size=0,
-                    command_timeout=30,
-                    max_inactive_connection_lifetime=60
+                    db_url, min_size=2, max_size=15, ssl=ssl_ctx,
+                    statement_cache_size=0, command_timeout=30, max_inactive_connection_lifetime=60
                 )
                 async with pool.acquire(timeout=10) as conn:
                     await create_tables(conn)
                     await seed_admin(conn)
                 asyncio.create_task(keep_alive_task())
                 asyncio.create_task(prewarm_cache())
-                logger.info(f"Server ishga tushdi! (Supabase PostgreSQL + Keep-Alive)")
+                logger.info("DB ulandi! (Supabase PostgreSQL + Keep-Alive)")
                 return
             except Exception as e:
                 logger.warning(f"DB ulanish urinishi {attempt+1}/5: {e}")
@@ -1409,14 +1410,27 @@ async def startup():
                 if attempt < 4:
                     await asyncio.sleep(3 * (attempt + 1))
     
-    logger.error("DB ga ulanib bo'lmadi. Server DB siz ishga tushadi.")
-    pool = None
+    logger.error("DB ga ulanib bo'lmadi. Server DB siz ishlaydi.")
 
 @app.on_event("shutdown")
 async def shutdown():
     global pool
     if pool:
         await pool.close()
+
+
+# Root-level health check (deployment health check calls /health, not /api/health)
+@app.get("/health")
+async def root_health():
+    db_status = "connected"
+    try:
+        if pool:
+            await pool.fetchval("SELECT 1")
+        else:
+            db_status = "connecting"
+    except Exception as e:
+        db_status = str(e)[:100]
+    return {"status": "ok", "database": db_status}
 
 app.include_router(api_router)
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

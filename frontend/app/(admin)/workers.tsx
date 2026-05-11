@@ -14,7 +14,7 @@ export default function AdminWorkers() {
   const [tab, setTab] = useState<'workers'|'orders'>('workers');
   const [workers, setWorkers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddWorker, setShowAddWorker] = useState(false);
   const [showDelivery, setShowDelivery] = useState(false);

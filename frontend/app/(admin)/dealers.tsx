@@ -14,7 +14,7 @@ export default function DealersScreen() {
   const c = useTheme();
   const { formatPrice, exchangeRate } = useCurrency();
   const [dealers, setDealers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showPayment, setShowPayment] = useState(false);

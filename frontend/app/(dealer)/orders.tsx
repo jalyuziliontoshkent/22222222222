@@ -11,7 +11,7 @@ export default function DealerOrders() {
   const c = useTheme();
   const { formatPrice } = useCurrency();
   const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchOrders = useCallback(async () => {

@@ -11,7 +11,7 @@ export default function WorkerCompleted() {
   const c = useTheme();
   const { formatPrice } = useCurrency();
   const [tasks, setTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchTasks = useCallback(async () => {

@@ -13,7 +13,7 @@ export default function DealerChat() {
   const c = useTheme();
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
   const [adminId, setAdminId] = useState('');
   const [adminName, setAdminName] = useState('Admin');

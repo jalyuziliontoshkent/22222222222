@@ -15,7 +15,7 @@ export default function AdminChat() {
   const [selectedPartner, setSelectedPartner] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const intervalRef = useRef<any>(null);

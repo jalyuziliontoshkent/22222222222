@@ -19,7 +19,7 @@ export default function NewOrder() {
   const { formatPrice } = useCurrency();
   const [categories, setCategories] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [items, setItems] = useState<OrderItem[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);

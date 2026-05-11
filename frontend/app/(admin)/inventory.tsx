@@ -15,7 +15,7 @@ export default function AdminInventory() {
   const { formatPrice } = useCurrency();
   const [categories, setCategories] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCat, setSelectedCat] = useState<any>(null);
   const [search, setSearch] = useState('');

@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [reports, setReports] = useState<any>(null);
   const [lowStock, setLowStock] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');

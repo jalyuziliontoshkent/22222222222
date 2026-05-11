@@ -16,7 +16,7 @@ export default function DealerDashboard() {
   const { formatPrice, currency, toggleCurrency } = useCurrency();
   const [orders, setOrders] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 

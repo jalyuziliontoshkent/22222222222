@@ -13,7 +13,7 @@ export default function WorkerTasks() {
   const c = useTheme();
   const { formatPrice } = useCurrency();
   const [tasks, setTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());

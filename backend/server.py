@@ -20,7 +20,10 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.environ['DATABASE_URL']
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+if not DATABASE_URL:
+    # Fallback — try to construct from individual env vars or use default
+    DATABASE_URL = os.environ.get('POSTGRES_URL', os.environ.get('SUPABASE_URL', ''))
 
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -269,7 +272,7 @@ async def list_dealers(admin: dict = Depends(require_admin)):
     cached = cache.get("dealers_list")
     if cached: return cached
     db = await get_pool()
-    rows = await db.fetch("SELECT * FROM users WHERE role = 'dealer' ORDER BY created_at DESC")
+    rows = await db.fetch("SELECT * FROM users WHERE role = 'dealer' ORDER BY created_at DESC LIMIT 200")
     out = []
     for r in rows:
         u = row_to_dict(r)
@@ -330,7 +333,7 @@ async def list_workers(admin: dict = Depends(require_admin)):
     cached = cache.get("workers_list")
     if cached: return cached
     db = await get_pool()
-    rows = await db.fetch("SELECT * FROM users WHERE role = 'worker' ORDER BY created_at DESC")
+    rows = await db.fetch("SELECT * FROM users WHERE role = 'worker' ORDER BY created_at DESC LIMIT 200")
     out = []
     for r in rows:
         u = row_to_dict(r)
@@ -421,7 +424,7 @@ async def list_materials(user: dict = Depends(get_current_user)):
     cached = cache.get("materials_list")
     if cached: return cached
     db = await get_pool()
-    rows = await db.fetch("SELECT m.*, c.name as category_name FROM materials m LEFT JOIN categories c ON m.category_id = c.id ORDER BY c.name ASC, m.name ASC")
+    rows = await db.fetch("SELECT m.*, c.name as category_name FROM materials m LEFT JOIN categories c ON m.category_id = c.id ORDER BY c.name ASC, m.name ASC LIMIT 500")
     out = []
     for r in rows:
         m = row_to_dict(r); m["id"] = str(m["id"])
@@ -528,7 +531,7 @@ async def list_orders(user: dict = Depends(get_current_user)):
     if user.get("role") == "dealer":
         rows = await db.fetch("SELECT * FROM orders WHERE dealer_id = $1 ORDER BY created_at DESC", int(user["id"]))
     else:
-        rows = await db.fetch("SELECT * FROM orders ORDER BY created_at DESC")
+        rows = await db.fetch("SELECT * FROM orders ORDER BY created_at DESC LIMIT 500")
     out = []
     for r in rows:
         o = row_to_dict(r)
@@ -1030,7 +1033,7 @@ async def get_reports(admin: dict = Depends(require_admin)):
     total_orders = await db.fetchval("SELECT COUNT(*) FROM orders")
 
     # Top selling materials (from order items)
-    all_orders = await db.fetch("SELECT items FROM orders WHERE status NOT IN ('rad_etilgan')")
+    all_orders = await db.fetch("SELECT items FROM orders WHERE status NOT IN ('rad_etilgan') LIMIT 1000")
     mat_stats: dict = {}
     for row in all_orders:
         items = json.loads(row["items"]) if isinstance(row["items"], str) else row["items"]
@@ -1098,7 +1101,7 @@ async def get_low_stock(admin: dict = Depends(require_admin)):
 @api_router.get("/reports/export-orders")
 async def export_orders_excel(admin: dict = Depends(require_admin)):
     db = await get_pool()
-    orders = await db.fetch("SELECT * FROM orders ORDER BY created_at DESC")
+    orders = await db.fetch("SELECT * FROM orders ORDER BY created_at DESC LIMIT 500")
 
     wb = Workbook()
     ws = wb.active
@@ -1268,7 +1271,7 @@ async def prewarm_cache():
         p = await get_pool()
         async with p.acquire() as conn:
             orders_r, dealers_r, workers_r, mats_r, cats_r = await asyncio.gather(
-                conn.fetch("SELECT * FROM orders ORDER BY created_at DESC"),
+                conn.fetch("SELECT * FROM orders ORDER BY created_at DESC LIMIT 500"),
                 conn.fetch("SELECT * FROM users WHERE role='dealer'"),
                 conn.fetch("SELECT * FROM users WHERE role='worker'"),
                 conn.fetch("SELECT * FROM materials ORDER BY id"),

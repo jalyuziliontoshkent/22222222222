@@ -10,36 +10,18 @@
     },
     "preview": {
       "android": {
-        "buildType": "apk",
-        "versionCode": 222
-      },
-      "ios": {
-        "buildNumber": "222"
+        "buildType": "apk"
       },
       "distribution": "internal"
     },
     "production": {
       "android": {
-        "buildType": "app-bundle",
-        "versionCode": 222
-      },
-      "ios": {
-        "buildNumber": "222"
+        "buildType": "app-bundle"
       },
       "autoIncrement": false
     }
   },
   "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./google-services.json",
-        "track": "internal"
-      },
-      "ios": {
-        "appleId": "YOUR_APPLE_ID",
-        "ascAppId": "YOUR_ASC_APP_ID",
-        "appleTeamId": "YOUR_TEAM_ID"
-      }
-    }
+    "production": {}
   }
 }

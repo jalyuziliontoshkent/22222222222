@@ -22,8 +22,14 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 if not DATABASE_URL:
-    # Fallback — try to construct from individual env vars or use default
     DATABASE_URL = os.environ.get('POSTGRES_URL', os.environ.get('SUPABASE_URL', ''))
+
+# Build fallback URLs (try both ports)
+DB_URLS = [DATABASE_URL]
+if ':6543/' in DATABASE_URL:
+    DB_URLS.append(DATABASE_URL.replace(':6543/', ':5432/'))
+elif ':5432/' in DATABASE_URL:
+    DB_URLS.append(DATABASE_URL.replace(':5432/', ':6543/'))
 
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -1314,33 +1320,40 @@ async def prewarm_cache():
 @app.on_event("startup")
 async def startup():
     global pool
-    # Try multiple times to connect (DB might be waking up)
-    for attempt in range(3):
-        try:
-            ssl_ctx = _ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = _ssl.CERT_NONE
-            pool = await asyncpg.create_pool(
-                DATABASE_URL,
-                min_size=2,
-                max_size=15,
-                ssl=ssl_ctx,
-                statement_cache_size=0,
-                command_timeout=30,
-                max_inactive_connection_lifetime=60
-            )
-            async with pool.acquire() as conn:
-                await create_tables(conn)
-                await seed_admin(conn)
-            asyncio.create_task(keep_alive_task())
-            asyncio.create_task(prewarm_cache())
-            logger.info("Server ishga tushdi! (Supabase PostgreSQL + Keep-Alive)")
-            return
-        except Exception as e:
-            logger.warning(f"DB ulanish urinishi {attempt+1}/3: {e}")
-            if attempt < 2:
-                await asyncio.sleep(5)
-    # If all attempts fail, start without DB (will retry on first request)
+    ssl_ctx = _ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = _ssl.CERT_NONE
+    
+    # Try each DB URL with multiple attempts
+    for db_url in DB_URLS:
+        for attempt in range(5):
+            try:
+                logger.info(f"DB ulanish urinishi {attempt+1}/5: {db_url[:60]}...")
+                pool = await asyncpg.create_pool(
+                    db_url,
+                    min_size=2,
+                    max_size=15,
+                    ssl=ssl_ctx,
+                    statement_cache_size=0,
+                    command_timeout=30,
+                    max_inactive_connection_lifetime=60
+                )
+                async with pool.acquire(timeout=10) as conn:
+                    await create_tables(conn)
+                    await seed_admin(conn)
+                asyncio.create_task(keep_alive_task())
+                asyncio.create_task(prewarm_cache())
+                logger.info(f"Server ishga tushdi! (Supabase PostgreSQL + Keep-Alive)")
+                return
+            except Exception as e:
+                logger.warning(f"DB ulanish urinishi {attempt+1}/5: {e}")
+                if pool:
+                    try: await pool.close()
+                    except: pass
+                    pool = None
+                if attempt < 4:
+                    await asyncio.sleep(3 * (attempt + 1))
+    
     logger.error("DB ga ulanib bo'lmadi. Server DB siz ishga tushadi.")
     pool = None
 

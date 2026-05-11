@@ -74,19 +74,30 @@ import ssl as _ssl
 async def get_pool() -> asyncpg.Pool:
     global pool
     if pool is not None:
-        return pool
+        # Quick health check - only if pool might be stale
+        try:
+            async with pool.acquire(timeout=5) as conn:
+                await conn.fetchval("SELECT 1")
+            return pool
+        except Exception:
+            logger.warning("Pool stale, recreating...")
+            try:
+                await pool.close()
+            except Exception:
+                pass
+            pool = None
     # Create new pool
     ssl_ctx = _ssl.create_default_context()
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = _ssl.CERT_NONE
     pool = await asyncpg.create_pool(
         DATABASE_URL,
-        min_size=5,
-        max_size=20,
+        min_size=2,
+        max_size=15,
         ssl=ssl_ctx,
         statement_cache_size=0,
         command_timeout=30,
-        max_inactive_connection_lifetime=300
+        max_inactive_connection_lifetime=120
     )
     return pool
 
@@ -1311,12 +1322,12 @@ async def startup():
             ssl_ctx.verify_mode = _ssl.CERT_NONE
             pool = await asyncpg.create_pool(
                 DATABASE_URL,
-                min_size=5,
-                max_size=20,
+                min_size=2,
+                max_size=15,
                 ssl=ssl_ctx,
-                statement_cache_size=0,  # PgBouncer (Supabase pooler) uchun majburiy
+                statement_cache_size=0,
                 command_timeout=30,
-                max_inactive_connection_lifetime=300
+                max_inactive_connection_lifetime=60
             )
             async with pool.acquire() as conn:
                 await create_tables(conn)

@@ -23,3 +23,12 @@ test_result.md
 # Env files (user should create their own)
 # backend/.env
 # frontend/.env
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials

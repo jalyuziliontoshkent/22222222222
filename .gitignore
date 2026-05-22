@@ -1,8 +1,27 @@
 # Dependencies
 node_modules/
+.next/
+out/
+.vercel/
 .venv/
 __pycache__/
 *.pyc
+
+# Environment
+.env.local
+.env
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Expo
 .expo/
@@ -10,6 +29,11 @@ dist/
 .cache/
 *.log
 .ruff_cache/
+
+# Build
+.next/
+build/
+dist/
 
 # System
 .DS_Store
@@ -20,10 +44,6 @@ test_reports/
 memory/
 test_result.md
 
-# Env files (user should create their own)
-# backend/.env
-# frontend/.env
--e 
 # Environment and credential files
 .env
 .env.*
